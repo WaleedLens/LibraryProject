@@ -1,57 +1,67 @@
-import logo from './logo.svg';
-import React,{useState} from 'react'
+import React from 'react';
+import { Switch } from 'react-router-dom';
+import { Redirect, Route ,useHistory} from "react-router-dom";
+
 import './App.css';
-import {TodoTable} from './components/todoTable';
-import {TodoForm} from './components/todoForm'
-export const App = ()=> {
+import { CheckoutPage } from './layouts/BookCheckout/CheckoutPage';
+import { Homepage } from './layouts/Homepage/Homepage';
+import { Footer } from './layouts/NavbarFooter/Footer';
+import { Navbar } from './layouts/NavbarFooter/Navbar';
+import { SearchBooksPage } from './layouts/SearchBooksPage/SearchBooksPage';
+import { OktaConfig } from './lib/OktaConfig';
+import {OktaAuth,toRelativeUrl} from '@okta/okta-auth-js';
+import { Security,LoginCallback } from '@okta/okta-react';
+import LoginWidget from './Auth/LoginWidget';
 
-  const [todos,setTodos] = useState([
-    {rowNumber: 3,rowDescription:'Test',rowAuthor:'Wool'},
-    {rowNumber: 4,rowDescription:'Test',rowAuthor:'Wool'},
-    {rowNumber: 5,rowDescription:'Test',rowAuthor:'Wool'},
-  ])
+const oktaAuth = new OktaAuth(OktaConfig);
 
-  const [showForm,setShowForm] = useState(false)
-  const addTodo = (rowdescription:string,rowAuthor:string) =>{
-    let rownumber = 0
-    if(todos.length > 0){
-      rownumber = todos[todos.length-1].rowNumber + 1
-    }else{
-      rownumber = 1
-    }
-    const newTodo = {rowNumber: rownumber,rowDescription:rowdescription,rowAuthor:rowAuthor}
 
-    setTodos(todos =>[...todos,newTodo])
+export const App = () => {
+  const history = useHistory();
+
+  const customAuthHandler = () => {
+    history.push('/login');
   }
 
-  const deleteTodo = (index:number) =>{
-    let filtered = todos.filter(function(v){
-      return v.rowNumber !==index
-    })
-    setTodos(filtered)
-  } 
-
+  const restoreOriginalUri = async (_oktaAuth:any,originalUri:any) =>{
+    history.replace(toRelativeUrl(originalUri ||
+      '/',window.location.origin
+      
+      ));
+  };
 
   
+
   return (
-    <div className="mt-5 container">
-    <div className="card ">
-        <div className='card-header'>
-          Your Todo's
+    <div className='d-flex flex-column min-vh-100'>
+      <Security oktaAuth={oktaAuth} restoreOriginalUri={restoreOriginalUri} onAuthRequired={customAuthHandler}>
+      <Navbar />
+      <div className='flex-grow-1'>
+        <Switch>
+          <Route path='/home'>
+            <Homepage />
+          </Route>
+          <Route path='/' exact>
+            <Redirect to='/home' />
+          </Route>
+          <Route path='/search'>
+            <SearchBooksPage />
+          </Route>
+          <Route path='/checkout/:bookId'>
+            <CheckoutPage/>
+          </Route>
+          
+          <Route path='/login' render={() => <LoginWidget config={OktaConfig}/>}/>
+
+          <Route path='/login/callback' component={LoginCallback} />
+          
+      
+        </Switch>
       </div>
-      <div className="card-body">
-         <TodoTable
-         props = {todos}
-         deleteTodo={deleteTodo}
-         />
-             <button className='btn btn-primary' onClick={() => setShowForm(!showForm)}>{showForm ? 'Close New Todo' : 'New Todo'}</button>
-        {showForm && <TodoForm addTodo={addTodo}
-         />}
-         
-        </div>
-   
-        </div>
-        </div>
+      <Footer />
+      </Security>
+    </div>
   );
 }
+
 
